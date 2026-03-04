@@ -3,7 +3,7 @@ import { sql } from '../db/index.js';
 
 export async function catalogRoutes(app: FastifyInstance) {
   // Health check
-  app.get('/health', async () => ({ status: 'ok' }));
+  app.get('/health', async () => ({ status: 'ok', version: '1.0.0' }));
 
   // List projects with firmware count
   app.get('/projects', async () => {
