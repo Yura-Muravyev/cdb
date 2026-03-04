@@ -28,7 +28,7 @@ jobs:
             docker run -d \
               --name firmware-hub-server \
               --restart unless-stopped \
-              -p 3000:3000 \
+              -p 3010:3000 \
               -v /data/firmware-storage:/data/storage \
               --env-file /data/docker/firmware-hub/.env \
               --network firmware-hub-net \
