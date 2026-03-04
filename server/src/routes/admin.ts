@@ -75,6 +75,59 @@ export async function adminRoutes(app: FastifyInstance) {
     return reply.code(201).send(row);
   });
 
+  // Update firmware
+  app.patch<{ Params: { id: string }; Body: { name?: string; description?: string } }>('/admin/firmware/:id', async (req, reply) => {
+    const { name, description } = req.body;
+    const [row] = await sql`
+      UPDATE firmware
+      SET name = COALESCE(${name ?? null}, name),
+          description = COALESCE(${description ?? null}, description),
+          updated_at = NOW()
+      WHERE id = ${req.params.id}
+      RETURNING *
+    `;
+    if (!row) return reply.code(404).send({ error: 'Firmware not found' });
+    return row;
+  });
+
+  // Update version
+  app.patch<{ Params: { id: string }; Body: { version?: string; author?: string; changelog?: string; status?: string } }>('/admin/versions/:id', async (req, reply) => {
+    const { version, author, changelog, status } = req.body;
+    if (status && !['draft', 'release', 'deprecated'].includes(status)) {
+      return reply.code(400).send({ error: 'Invalid status' });
+    }
+    const [row] = await sql`
+      UPDATE firmware_versions
+      SET version = COALESCE(${version ?? null}, version),
+          author = COALESCE(${author ?? null}, author),
+          changelog = COALESCE(${changelog ?? null}, changelog),
+          status = COALESCE(${status ?? null}, status),
+          updated_at = NOW()
+      WHERE id = ${req.params.id}
+      RETURNING *
+    `;
+    if (!row) return reply.code(404).send({ error: 'Version not found' });
+    return row;
+  });
+
+  // Delete firmware and all its versions/files
+  app.delete<{ Params: { id: string } }>('/admin/firmware/:id', async (req, reply) => {
+    const firmwareId = req.params.id;
+    // Get all version storage paths before deleting
+    const versions = await sql`SELECT storage_path FROM firmware_versions WHERE firmware_id = ${firmwareId}`;
+    const [row] = await sql`DELETE FROM firmware WHERE id = ${firmwareId} RETURNING id`;
+    if (!row) return reply.code(404).send({ error: 'Firmware not found' });
+
+    // Clean up files
+    for (const v of versions) {
+      try {
+        await rm(join(config.storageRoot, v.storage_path), { force: true });
+      } catch { /* ignore */ }
+    }
+
+    return { deleted: true };
+  });
+
   // Delete version and file from disk
   app.delete<{ Params: { id: string } }>('/admin/versions/:id', async (req, reply) => {
     const [row] = await sql`
