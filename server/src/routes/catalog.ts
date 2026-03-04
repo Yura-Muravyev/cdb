@@ -5,28 +5,11 @@ export async function catalogRoutes(app: FastifyInstance) {
   // Health check
   app.get('/health', async () => ({ status: 'ok', version: '1.0.0' }));
 
-  // List projects with firmware count
-  app.get('/projects', async () => {
-    return sql`
-      SELECT p.*, COUNT(f.id)::int AS firmware_count
-      FROM projects p
-      LEFT JOIN firmware f ON f.project_id = p.id
-      GROUP BY p.id
-      ORDER BY p.name
-    `;
-  });
-
-  // Single project
-  app.get<{ Params: { id: string } }>('/projects/:id', async (req, reply) => {
-    const [row] = await sql`SELECT * FROM projects WHERE id = ${req.params.id}`;
-    if (!row) return reply.code(404).send({ error: 'Project not found' });
-    return row;
-  });
-
-  // Firmware for a project with latest release version
-  app.get<{ Params: { id: string } }>('/projects/:id/firmware', async (req) => {
+  // List all firmware
+  app.get('/firmware', async () => {
     return sql`
       SELECT f.*,
+        (SELECT COUNT(*)::int FROM firmware_versions fv WHERE fv.firmware_id = f.id) AS version_count,
         (
           SELECT json_build_object('id', fv.id, 'version', fv.version, 'created_at', fv.created_at)
           FROM firmware_versions fv
@@ -35,9 +18,15 @@ export async function catalogRoutes(app: FastifyInstance) {
           LIMIT 1
         ) AS latest_release
       FROM firmware f
-      WHERE f.project_id = ${req.params.id}
       ORDER BY f.name
     `;
+  });
+
+  // Single firmware
+  app.get<{ Params: { id: string } }>('/firmware/:id', async (req, reply) => {
+    const [row] = await sql`SELECT * FROM firmware WHERE id = ${req.params.id}`;
+    if (!row) return reply.code(404).send({ error: 'Firmware not found' });
+    return row;
   });
 
   // Versions for a firmware

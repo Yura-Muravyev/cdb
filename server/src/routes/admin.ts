@@ -6,34 +6,17 @@ import { join } from 'path';
 import { mkdir, rm } from 'fs/promises';
 
 export async function adminRoutes(app: FastifyInstance) {
-  // Create project
-  app.post<{ Body: { name: string; description?: string } }>('/admin/projects', async (req, reply) => {
+  // Create firmware
+  app.post<{ Body: { name: string; description?: string } }>('/admin/firmware', async (req, reply) => {
     const { name, description } = req.body;
     try {
       const [row] = await sql`
-        INSERT INTO projects (name, description) VALUES (${name}, ${description ?? null})
+        INSERT INTO firmware (name, description) VALUES (${name}, ${description ?? null})
         RETURNING *
       `;
       return reply.code(201).send(row);
     } catch (err: any) {
-      if (err.code === '23505') return reply.code(409).send({ error: 'Project already exists' });
-      throw err;
-    }
-  });
-
-  // Create firmware
-  app.post<{ Body: { project_id: string; name: string; description?: string } }>('/admin/firmware', async (req, reply) => {
-    const { project_id, name, description } = req.body;
-    try {
-      const [row] = await sql`
-        INSERT INTO firmware (project_id, name, description)
-        VALUES (${project_id}, ${name}, ${description ?? null})
-        RETURNING *
-      `;
-      return reply.code(201).send(row);
-    } catch (err: any) {
-      if (err.code === '23505') return reply.code(409).send({ error: 'Firmware already exists for this project' });
-      if (err.code === '23503') return reply.code(404).send({ error: 'Project not found' });
+      if (err.code === '23505') return reply.code(409).send({ error: 'Firmware with this name already exists' });
       throw err;
     }
   });
