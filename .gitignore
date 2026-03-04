@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+*.part
+storage/
+bun.lock
+client/
+Dockerfile
+tz-*.md
+.claude/
