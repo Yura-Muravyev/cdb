@@ -8,3 +8,4 @@ client/
 Dockerfile
 tz-*.md
 .claude/
+*.bin
